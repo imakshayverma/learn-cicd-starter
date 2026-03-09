@@ -7,6 +7,8 @@ jobs:
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
     steps:
       - name: Check out code
@@ -16,6 +18,9 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "1.22.x"
+
+      - name: Install goose
+        run: go install github.com/pressly/goose/v3/cmd/goose@latest
 
       - name: Build Production
         run: ./scripts/buildprod.sh
@@ -31,6 +36,9 @@ jobs:
       - name: 'Deploy to Artifact Registry'
         run: |
           gcloud builds submit --tag us-central1-docker.pkg.dev/warm-aegis-489614-n4/notely-ar-repo/notely:latest .
+
+      - name: 'Run DB Migrations'
+        run: ./migrate.sh
 
       - name: Deploy to Cloud Run
         run: gcloud run deploy notely --image us-central1-docker.pkg.dev/warm-aegis-489614-n4/notely-ar-repo/notely:latest --region us-central1 --allow-unauthenticated --project warm-aegis-489614-n4 --max-instances=4
